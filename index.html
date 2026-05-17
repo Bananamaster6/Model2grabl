@@ -142,10 +142,10 @@ select option{background:var(--s2)}
     <span class="gate-label">Access Code</span>
     <div class="gate-wrap">
       <input class="gate-input" id="gateInput" type="password" placeholder="enter password…" autocomplete="off"/>
-      <button class="gate-eye" id="gateEye">👁</button>
+      <button class="gate-eye" id="gateEye" type="button">👁</button>
     </div>
     <div class="gate-hint" id="gateHint">&nbsp;</div>
-    <button class="gate-btn" id="gateBtn">Unlock →</button>
+    <button class="gate-btn" id="gateBtn" type="button">Unlock →</button>
   </div>
 </div>
 
@@ -304,13 +304,53 @@ import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/j
   const PASSWORD='midigrabthebestonewalrus';
   const KEY='mg_auth';
   const gate=document.getElementById('gate'),inp=document.getElementById('gateInput'),btn=document.getElementById('gateBtn'),hint=document.getElementById('gateHint'),eye=document.getElementById('gateEye');
-  function isOk(){try{return localStorage.getItem(KEY)===PASSWORD;}catch{return false;}}
-  function unlock(instant){try{localStorage.setItem(KEY,PASSWORD);}catch{}if(instant){gate.style.display='none';return;}hint.textContent='✓ Access granted';hint.className='gate-hint ok';inp.className='gate-input right';gate.classList.add('unlocking');setTimeout(()=>gate.style.display='none',400);}
+  let busy=false;
+  function safeStorageGet(){try{return localStorage.getItem(KEY);}catch{return null;}}
+  function safeStorageSet(){try{localStorage.setItem(KEY,PASSWORD);}catch{}}
+  function isOk(){return safeStorageGet()===PASSWORD;}
+  function unlock(instant){
+    safeStorageSet();
+    if(instant){gate.style.display='none';return;}
+    hint.textContent='✓ Access granted';
+    hint.className='gate-hint ok';
+    inp.className='gate-input right';
+    gate.classList.add('unlocking');
+    setTimeout(()=>gate.style.display='none',400);
+  }
+  function tryUnlock(force){
+    if(busy) return;
+    const v=(inp.value||'').trim();
+    if(!v.length){
+      if(force){
+        hint.textContent='Required.';
+        hint.className='gate-hint err';
+      }
+      return;
+    }
+    if(v===PASSWORD){
+      busy=true;
+      unlock(false);
+      return;
+    }
+    hint.textContent='Incorrect.';
+    hint.className='gate-hint err';
+    inp.className='gate-input wrong';
+    inp.value='';
+    setTimeout(()=>inp.className='gate-input',400);
+    inp.focus();
+  }
+
+  inp.setAttribute('spellcheck','false');
+  inp.setAttribute('autocapitalize','off');
+  inp.setAttribute('autocomplete','off');
+
   if(isOk()){unlock(true);}
   else{
     eye.addEventListener('click',()=>{const s=inp.type==='password';inp.type=s?'text':'password';eye.textContent=s?'🙈':'👁';inp.focus();});
-    function tryUnlock(){const v=inp.value.trim();if(!v.length){hint.textContent='Required.';hint.className='gate-hint err';return;}if(v===PASSWORD){unlock(false);}else{hint.textContent='Incorrect.';hint.className='gate-hint err';inp.className='gate-input wrong';inp.value='';setTimeout(()=>inp.className='gate-input',400);inp.focus();}}
-    btn.addEventListener('click',tryUnlock);inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});inp.focus();
+    btn.addEventListener('click',()=>tryUnlock(true));
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();tryUnlock(true);}});
+    inp.addEventListener('input',()=>{if(inp.value.trim()===PASSWORD) tryUnlock(false);});
+    inp.focus();
   }
 })();
 
