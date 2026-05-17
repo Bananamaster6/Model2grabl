@@ -301,16 +301,15 @@ import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/j
 import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/STLLoader.js';
 
 (function(){
-  const HASH='d7fd49fefb227c608708ffb6908768ebdbeea0fe3a1de46c495152f9f649d82c';
+  const PASSWORD='midigrabthebestonewalrus';
   const KEY='mg_auth';
   const gate=document.getElementById('gate'),inp=document.getElementById('gateInput'),btn=document.getElementById('gateBtn'),hint=document.getElementById('gateHint'),eye=document.getElementById('gateEye');
-  async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
-  function isOk(){try{return localStorage.getItem(KEY)===HASH;}catch{return false;}}
-  function unlock(instant){try{localStorage.setItem(KEY,HASH);}catch{}if(instant){gate.style.display='none';return;}hint.textContent='✓ Access granted';hint.className='gate-hint ok';inp.className='gate-input right';gate.classList.add('unlocking');setTimeout(()=>gate.style.display='none',400);}
+  function isOk(){try{return localStorage.getItem(KEY)===PASSWORD;}catch{return false;}}
+  function unlock(instant){try{localStorage.setItem(KEY,PASSWORD);}catch{}if(instant){gate.style.display='none';return;}hint.textContent='✓ Access granted';hint.className='gate-hint ok';inp.className='gate-input right';gate.classList.add('unlocking');setTimeout(()=>gate.style.display='none',400);}
   if(isOk()){unlock(true);}
   else{
     eye.addEventListener('click',()=>{const s=inp.type==='password';inp.type=s?'text':'password';eye.textContent=s?'🙈':'👁';inp.focus();});
-    async function tryUnlock(){const v=inp.value;if(!v.length){hint.textContent='Required.';hint.className='gate-hint err';return;}if(await sha256(v)===HASH){unlock(false);}else{hint.textContent='Incorrect.';hint.className='gate-hint err';inp.className='gate-input wrong';inp.value='';setTimeout(()=>inp.className='gate-input',400);inp.focus();}}
+    function tryUnlock(){const v=inp.value.trim();if(!v.length){hint.textContent='Required.';hint.className='gate-hint err';return;}if(v===PASSWORD){unlock(false);}else{hint.textContent='Incorrect.';hint.className='gate-hint err';inp.className='gate-input wrong';inp.value='';setTimeout(()=>inp.className='gate-input',400);inp.focus();}}
     btn.addEventListener('click',tryUnlock);inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});inp.focus();
   }
 })();
