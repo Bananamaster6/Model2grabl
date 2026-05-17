@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -294,33 +293,26 @@ select option{background:var(--s2)}
   </div>
 </div>
 
-<script>
-// ── GATE ─────────────────────────────────────────────────────────────────
-(function(){
-  const HASH='d7fd49fefb227c608708ffb6908768ebdbeea0fe3a1de46c495152f9f649d82c';
-  const KEY='mg_auth';
-  const gate=document.getElementById('gate');
-  const inp=document.getElementById('gateInput');
-  const btn=document.getElementById('gateBtn');
-  const hint=document.getElementById('gateHint');
-  const eye=document.getElementById('gateEye');
-  async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
-  function isOk(){try{return localStorage.getItem(KEY)===HASH;}catch{return false;}}
-  function unlock(instant){try{localStorage.setItem(KEY,HASH);}catch{}if(instant){gate.style.display='none';return;}hint.textContent='✓ Access granted';hint.className='gate-hint ok';inp.className='gate-input right';gate.classList.add('unlocking');setTimeout(()=>gate.style.display='none',400);}
-  if(isOk()){unlock(true);return;}
-  eye.addEventListener('click',()=>{const s=inp.type==='password';inp.type=s?'text':'password';eye.textContent=s?'🙈':'👁';inp.focus();});
-  async function tryUnlock(){const v=inp.value;if(!v.length){hint.textContent='Required.';hint.className='gate-hint err';return;}if(await sha256(v)===HASH){unlock(false);}else{hint.textContent='Incorrect.';hint.className='gate-hint err';inp.className='gate-input wrong';inp.value='';setTimeout(()=>inp.className='gate-input',400);inp.focus();}}
-  btn.addEventListener('click',tryUnlock);
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
-  inp.focus();
-})();
-</script>
-
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/STLLoader.js';
+
+(function(){
+  const HASH='d7fd49fefb227c608708ffb6908768ebdbeea0fe3a1de46c495152f9f649d82c';
+  const KEY='mg_auth';
+  const gate=document.getElementById('gate'),inp=document.getElementById('gateInput'),btn=document.getElementById('gateBtn'),hint=document.getElementById('gateHint'),eye=document.getElementById('gateEye');
+  async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
+  function isOk(){try{return localStorage.getItem(KEY)===HASH;}catch{return false;}}
+  function unlock(instant){try{localStorage.setItem(KEY,HASH);}catch{}if(instant){gate.style.display='none';return;}hint.textContent='✓ Access granted';hint.className='gate-hint ok';inp.className='gate-input right';gate.classList.add('unlocking');setTimeout(()=>gate.style.display='none',400);}
+  if(isOk()){unlock(true);}
+  else{
+    eye.addEventListener('click',()=>{const s=inp.type==='password';inp.type=s?'text':'password';eye.textContent=s?'🙈':'👁';inp.focus();});
+    async function tryUnlock(){const v=inp.value;if(!v.length){hint.textContent='Required.';hint.className='gate-hint err';return;}if(await sha256(v)===HASH){unlock(false);}else{hint.textContent='Incorrect.';hint.className='gate-hint err';inp.className='gate-input wrong';inp.value='';setTimeout(()=>inp.className='gate-input',400);inp.focus();}}
+    btn.addEventListener('click',tryUnlock);inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});inp.focus();
+  }
+})();
 
 const $=id=>document.getElementById(id);
 let meshData=null,levelJson=null,outputFmt='json';
@@ -439,7 +431,7 @@ function clusterVertices(vertices,colors,normals,gridRes){
   const clusters=[];
   for(const[,cell]of cells){
     const n=cell.pts.length/3;
-    let sx=0,sy=0,sz=0,r=0,g=bl=0,nx=0,ny=0,nz=0;
+    let sx=0,sy=0,sz=0,r=0,g=0,bl=0,nx=0,ny=0,nz=0;
     let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
     for(let i=0;i<n;i++){
       sx+=cell.pts[i*3];sy+=cell.pts[i*3+1];sz+=cell.pts[i*3+2];
@@ -498,12 +490,13 @@ function buildGrabLevel(clusters,palette,modelBounds,settings){
     }
     nodes.push({
       objectID:objId++,
-      levelNodeSign:{
-        position:{x:0,y:r3(paletteY+1.2),z:0},
+      levelNodeStatic:{
+        shape:0,material:8,
+        position:{x:0,y:r3(paletteY+1.4),z:0},
+        scale:{x:r3(palette.length*1.2),y:0.3,z:0.3},
         rotation:{x:0,y:0,z:0,w:1},
-        scale:{x:1,y:1,z:1},
-        text:'Color Palette — fix colors here if wrong',
-        isStatic:true
+        isNeon:true,isTransparent:false,isGrabbable:false,isGrapplable:false,isPassable:true,isAdditive:false,
+        color1:{r:1,g:1,b:1,a:1},specularBrightness:0
       }
     });
   }
@@ -536,7 +529,7 @@ function buildGrabLevel(clusters,palette,modelBounds,settings){
   };
 }
 
-async function processModel(object3d,fileName){
+async function processModel(object3d){
   ss('Analyzing mesh…','load');setProgress(10,'Extracting vertices...');await sleep();
   const data=extractMeshData(object3d);
   if(!data.vertCount){ss('No geometry found in model.','err');clearProgress();return;}
@@ -545,28 +538,37 @@ async function processModel(object3d,fileName){
   const maxDim=Math.max(bounds.sizeX,bounds.sizeY,bounds.sizeZ);
   const autoScale=maxDim>0?(10/maxDim):1;
   const userScale=(+$('modelScale').value||1)*autoScale;
+
+  // Center vertices at origin bottom
+  const cx=bounds.cx,cy=bounds.minY,cz=bounds.cz;
+  const centeredVerts=[];
+  for(let i=0;i<data.vertices.length;i+=3){
+    centeredVerts.push(data.vertices[i]-cx,data.vertices[i+1]-cy,data.vertices[i+2]-cz);
+  }
+  const centeredBounds=computeBounds(centeredVerts);
+
   $('sVerts').textContent=data.vertCount.toLocaleString();
   $('sTris').textContent=data.triCount.toLocaleString();
   setProgress(50,'Clustering geometry...');await sleep();
   const complexity=+cxSlider.value;
   const maxBlocks=Math.floor(complexity/2);
-  if(maxBlocks===0){ss('Complexity is 0 — nothing will be placed. Increase the slider.','warn');clearProgress();return;}
-  const targetGridRes=Math.max(2,Math.ceil(Math.pow(maxBlocks,1/3)*1.5));
-  let clusters=clusterVertices(data.vertices,data.colors,data.normals,targetGridRes);
+  if(maxBlocks===0){ss('Complexity is 0 — increase the slider.','warn');clearProgress();return;}
+  const targetGridRes=Math.max(2,Math.ceil(Math.pow(maxBlocks,1/3)*2));
+  let clusters=clusterVertices(centeredVerts,data.colors,data.normals,targetGridRes);
   setProgress(70,'Fitting shapes...');await sleep();
   clusters.sort((a,b)=>b.count-a.count);
   if(clusters.length>maxBlocks)clusters=clusters.slice(0,maxBlocks);
-  setProgress(85,'Extracting color palette...');await sleep();
-  const palette=extractPalette(clusters,Math.min(16,Math.ceil(Math.sqrt(clusters.length))));
-  setProgress(95,'Building Grab level...');await sleep();
-  const json=buildGrabLevel(clusters,palette,{minX:bounds.minX*userScale,maxX:bounds.maxX*userScale,minY:bounds.minY*userScale,maxY:bounds.maxY*userScale,sizeX:bounds.sizeX*userScale,sizeY:bounds.sizeY*userScale,sizeZ:bounds.sizeZ*userScale},{
+  setProgress(85,'Extracting palette...');await sleep();
+  const palette=extractPalette(clusters,Math.min(20,Math.max(4,Math.ceil(Math.sqrt(clusters.length)))));
+  setProgress(95,'Building level...');await sleep();
+  const json=buildGrabLevel(clusters,palette,centeredBounds,{
     scale:userScale,
     material:+$('matSel').value,
     neon:$('neonSel').value==='1',
     addPalette:$('paletteSel').value==='1',
     title:$('levelTitle').value||'Model Level'
   });
-  setProgress(100,'Done!');await sleep(600);clearProgress();
+  setProgress(100,'Done!');await sleep(500);clearProgress();
   levelJson=json;
   const s=JSON.stringify(json,null,2);
   codeBox.textContent=s.slice(0,8000)+(s.length>8000?'\n\n// ...truncated':'');
@@ -574,7 +576,7 @@ async function processModel(object3d,fileName){
   $('sBlocks').textContent=clusters.length.toLocaleString();
   $('exportInfo').textContent=`${(s.length/1024).toFixed(1)} KB · ${json.levelNodes.length} nodes`;
   pillsEl.innerHTML='';
-  [['Blocks',clusters.length],['Colors',palette.length],['Grid res',targetGridRes+'³'],['Scale',r3(userScale)+'×']].forEach(([l,v])=>{
+  [['Blocks',clusters.length],['Colors',palette.length],['Grid',targetGridRes+'³'],['Scale',r3(userScale)+'×']].forEach(([l,v])=>{
     const d=document.createElement('div');d.className='pill';d.innerHTML=`<b>${v}</b> ${l}`;pillsEl.appendChild(d);
   });
   expStatus.textContent=`${clusters.length} blocks · ${palette.length} palette colors · ${(s.length/1024).toFixed(0)} KB`;
@@ -626,7 +628,7 @@ modelDrop.addEventListener('drop',e=>{e.preventDefault();modelDrop.classList.rem
 buildBtn.addEventListener('click',async()=>{
   if(!meshData)return;
   buildBtn.disabled=true;
-  await processModel(meshData,'model');
+  await processModel(meshData);
   buildBtn.disabled=false;
 });
 
