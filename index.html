@@ -362,16 +362,16 @@ function chooseShape(sx,sy,sz,nx,ny,nz){
   const maxS=Math.max(sx,sy,sz),minS=Math.min(sx,sy,sz),midS=sx+sy+sz-maxS-minS;
   const elong=maxS/(minS+0.001),flat=minS/(midS+0.001);
   const mainY=sy>=sx&&sy>=sz;
-  if(flat<0.2)return 1001;
-  if(elong>3&&mainY)return 2;
-  if(elong>3)return 2;
-  if(elong>2&&flat<0.5)return 3;
-  if(Math.abs(ny)>0.8&&sy<sx*0.4&&sy<sz*0.4)return 1001;
-  if(midS/maxS>0.8&&elong<1.4)return 1;
-  if(elong>1.8&&mainY&&Math.random()>0.5)return 4;
-  if(elong<1.3)return 0;
-  if(elong>2)return 5;
-  return 0;
+  if(flat<0.15)return 1000;
+  if(elong>3.5&&mainY)return 1002;
+  if(elong>3.5)return 1002;
+  if(elong>2&&flat<0.45)return 1004;
+  if(Math.abs(ny)>0.85&&sy<sx*0.35&&sy<sz*0.35)return 1000;
+  if(midS/maxS>0.82&&elong<1.35)return 1001;
+  if(elong>1.8&&mainY&&Math.random()>0.55)return 1005;
+  if(elong<1.25)return 1000;
+  if(elong>2.2)return 1003;
+  return 1000;
 }
 
 function clusterVertices(vertices,colors,normals,gridRes){
@@ -407,21 +407,49 @@ function extractPalette(clusters,maxColors){
 }
 
 function buildGrabLevel(clusters,palette,maxY,settings){
-  const {scale,material,neon,addPalette,title}=settings;
+  const {scale,neon,addPalette,title}=settings;
   const nodes=[];let objId=1;
-  const paletteY=r3(maxY*scale+2);
+  const paletteY=r3(maxY*scale+2.5);
+
   if(addPalette&&palette.length>0){
-    const sp=1.2,startX=r3(-(palette.length-1)*sp/2);
+    const sp=1.3,startX=r3(-(palette.length-1)*sp/2);
     for(let i=0;i<palette.length;i++){
       const col=palette[i];
-      nodes.push({objectID:objId++,levelNodeStatic:{shape:0,material,position:{x:r3(startX+i*sp),y:paletteY,z:0},scale:{x:0.9,y:0.9,z:0.9},rotation:{x:0,y:0,z:0,w:1},isNeon:neon,isTransparent:false,isGrabbable:true,isGrapplable:false,isPassable:false,isAdditive:false,color1:{r:col.r,g:col.g,b:col.b,a:1},specularBrightness:0.1}});
+      nodes.push({objectID:objId++,levelNodeStatic:{
+        shape:1000,material:0,
+        position:{x:r3(startX+i*sp),y:paletteY,z:0},
+        scale:{x:1,y:1,z:1},
+        rotation:{x:0,y:0,z:0,w:1},
+        isNeon:true,isTransparent:false,isGrabbable:true,isGrapplable:false,isPassable:false,isAdditive:false,
+        color1:{r:col.r,g:col.g,b:col.b,a:1},specularBrightness:0
+      }});
     }
-    nodes.push({objectID:objId++,levelNodeStatic:{shape:0,material:8,position:{x:0,y:r3(paletteY+1.3),z:0},scale:{x:r3(palette.length*1.1),y:0.25,z:0.25},rotation:{x:0,y:0,z:0,w:1},isNeon:true,isTransparent:false,isGrabbable:false,isGrapplable:false,isPassable:true,isAdditive:false,color1:{r:1,g:1,b:1,a:1},specularBrightness:0}});
   }
+
   for(const c of clusters){
-    nodes.push({objectID:objId++,levelNodeStatic:{shape:chooseShape(c.scaleX,c.scaleY,c.scaleZ,c.nx,c.ny,c.nz),material,position:{x:r3(c.x*scale),y:r3(c.y*scale),z:r3(c.z*scale)},scale:{x:r3(Math.max(0.05,c.scaleX*scale)),y:r3(Math.max(0.05,c.scaleY*scale)),z:r3(Math.max(0.05,c.scaleZ*scale))},rotation:{x:0,y:0,z:0,w:1},isNeon:neon,isTransparent:false,isGrabbable:false,isGrapplable:false,isPassable:false,isAdditive:false,color1:{r:r3(Math.min(1,Math.max(0,c.r))),g:r3(Math.min(1,Math.max(0,c.g))),b:r3(Math.min(1,Math.max(0,c.b))),a:1},specularBrightness:0.15}});
+    const shape=chooseShape(c.scaleX,c.scaleY,c.scaleZ,c.nx,c.ny,c.nz);
+    const cr=r3(Math.min(1,Math.max(0,c.r)));
+    const cg=r3(Math.min(1,Math.max(0,c.g)));
+    const cb=r3(Math.min(1,Math.max(0,c.b)));
+    nodes.push({objectID:objId++,levelNodeStatic:{
+      shape,
+      material:0,
+      position:{x:r3(c.x*scale),y:r3(c.y*scale),z:r3(c.z*scale)},
+      scale:{x:r3(Math.max(0.1,c.scaleX*scale)),y:r3(Math.max(0.1,c.scaleY*scale)),z:r3(Math.max(0.1,c.scaleZ*scale))},
+      rotation:{x:0,y:0,z:0,w:1},
+      isNeon:neon,isTransparent:false,isGrabbable:false,isGrapplable:false,isPassable:false,isAdditive:false,
+      color1:{r:cr,g:cg,b:cb,a:1},
+      specularBrightness:0
+    }});
   }
-  return{formatVersion:17,title:title||'Model Level',creators:'Model2Grab',description:`${clusters.length} shapes — Model2Grab`,tags:['model','generated'],maxCheckpointCount:10,fogDensity:0,ambienceSettings:{skyZenithColor:{r:.04,g:.06,b:.10,a:1},skyHorizonColor:{r:.08,g:.10,b:.18,a:1},sunAltitude:35,sunAzimuth:270,sunSize:0.5,fogDensity:0},levelNodes:nodes};
+
+  return{
+    formatVersion:17,title:title||'Model Level',creators:'Model2Grab',
+    description:`${clusters.length} shapes — Model2Grab`,
+    tags:['model','generated'],maxCheckpointCount:10,fogDensity:0,
+    ambienceSettings:{skyZenithColor:{r:.04,g:.06,b:.10,a:1},skyHorizonColor:{r:.08,g:.10,b:.18,a:1},sunAltitude:35,sunAzimuth:270,sunSize:0.5,fogDensity:0},
+    levelNodes:nodes
+  };
 }
 
 async function parseGLB(buffer){
@@ -550,7 +578,7 @@ async function processModel(data){
   setProgress(87,'Building color palette...');await sleep();
   const palette=extractPalette(clusters,Math.min(20,Math.max(4,Math.ceil(Math.sqrt(clusters.length)))));
   setProgress(95,'Building Grab level JSON...');await sleep();
-  const json=buildGrabLevel(clusters,palette,cBounds.maxY,{scale:userScale,material:+$('matSel').value,neon:$('neonSel').value==='1',addPalette:$('paletteSel').value==='1',title:$('levelTitle').value||'Model Level'});
+  const json=buildGrabLevel(clusters,palette,cBounds.maxY,{scale:userScale,neon:$('neonSel').value==='1',addPalette:$('paletteSel').value==='1',title:$('levelTitle').value||'Model Level'});
   setProgress(100,'Done!');await sleep(500);clearProgress();
   levelJson=json;
   const s=JSON.stringify(json,null,2);
